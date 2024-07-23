@@ -1,0 +1,38 @@
+name: Deploy React Application
+
+on:
+  push:
+    branches:
+      - main
+      
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: docker build -t jamshaidkhalid/bitwalee-fe --build-arg NODE_ENV='production' --build-arg VITE_PROD_API_URL=`${{secrets.VITE_PROD_API_URL}}` --build-arg VITE_PROD_REDIRECTION_URL=`${{secrets.VITE_PROD_REDIRECTION_URL}}` .
+
+      - name: Tag Docker image
+        run: docker push jamshaidkhalid/bitwalee-fe:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: Pull Docker image
+        run: docker pull jamshaidkhalid/bitwalee-fe:latest
+      
+      - name: Delete existing container
+        run: docker rm -f bitwalee-container-fe
+
+      - name: Run Docker container
+        run: docker run -d -p 8080:80 --name bitwalee-container-fe  jamshaidkhalid/bitwalee-fe:latest
+      
